@@ -1,0 +1,39 @@
+.header {
+  height: 70px;
+  background-color: #24639c;
+}
+
+.logo {
+  height: 45px;
+  width: 200px;
+  margin-top: -5px;
+}
+
+.headerButtons {
+  margin-top: -80px;
+  display: flex;
+  justify-content: end;
+}
+
+.buttonContainer {
+  display: flex;
+  align-items: center;
+}
+
+.headerButtonTitle {
+  color: white;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.headerButtonIcon {
+  color: white;
+  font-size: 20px;
+
+  height: 40px;
+  width: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

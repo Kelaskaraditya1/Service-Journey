@@ -1,0 +1,33 @@
+.card {
+  margin: 40px auto;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  border: 1px solid #e5e5e5;
+}
+
+.identityCard {
+  text-align: start;
+  border: 2px solid lightgray;
+  width: 380px;
+  border-radius: 15px;
+  margin-top: 25px;
+  padding: 10px;
+  display: flex;
+  outline: oklch(0.6204 0.195 253.83);
+}
+
+.identityCard:focus {
+  border: 2px solid oklch(0.6204 0.195 253.83);
+}
+
+.identityContainer {
+  display: flex;
+  justify-content: space-evenly;
+  margin-bottom: 30px;
+}
+
+.main {
+  height: calc(100vh - 160px);
+}

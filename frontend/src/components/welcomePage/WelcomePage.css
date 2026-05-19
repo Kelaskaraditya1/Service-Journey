@@ -1,0 +1,437 @@
+/* Header Style starte here*/
+
+.headerContainer{
+  display: flex;
+  justify-content:space-between;
+  width: 100%;
+}
+
+.navBarItem{
+  margin-left: 20px;
+}
+
+/* Header Style ends here*/
+
+/* Sidebar starts here */
+
+.sidebar{
+
+  width: 240px;
+
+  height: calc(100vh - 72px);
+
+  background-color: white;
+
+  border-right: 1px solid #e5e7eb;
+
+  padding: 20px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: space-between;
+}
+
+/* User Card */
+
+.userCard{
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 15px;
+}
+
+.userIcon{
+
+  height: 50px;
+
+  width: 50px;
+
+  border-radius: 12px;
+
+  background-color: #eef2ff;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  color: blue;
+
+  font-size: 20px;
+}
+
+.welcomeText{
+
+  margin: 0;
+
+  color: gray;
+
+  font-size: 14px;
+}
+
+.verifiedText{
+
+  margin: 0;
+
+  font-weight: 700;
+}
+
+/* Secure Button */
+
+.secureButton{
+  width: 100%;
+  padding: 10px;
+  margin-top:-120px;
+  border-radius: 8px;
+  border: 1px solid blue;
+  background-color: white;
+  color: blue;
+  font-weight: 600;
+}
+
+/* Sidebar Menu */
+
+.sidebarMenu{
+  margin-top: -120px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menuItem{
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 14px   ;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.menuItem:hover{
+
+  background-color: #f3f4f6;
+}
+
+.activeMenu{
+
+  background-color: #eef2ff;
+
+  color: blue;
+
+  font-weight: 600;
+}
+
+/* Bottom Menu */
+
+.bottomMenu{
+
+  border-top: 1px solid #e5e7eb;
+
+  padding-top: 20px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 10px;
+}
+
+/* Sidebar ends here */
+
+/* Main content starts here */
+
+.dashboardContent {
+  flex: 1;
+  padding: 30px;
+  display: flex;
+  gap: 35px;
+  background-color: #f5f7fb;
+}
+
+/* LEFT SECTION */
+
+.leftDashboard {
+  flex: 1;
+}
+
+/* Welcome Section */
+
+.welcomeSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.welcomeHeading {
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.sessionInfo {
+  display: flex;
+  gap: 20px;
+}
+
+.secureSession {
+  color: green;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.lastLogin {
+  color: gray;
+}
+
+.timeoutBox {
+  background-color: #e8f0ff;
+  color: blue;
+  padding: 14px 22px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Sections */
+
+.section {
+  margin-top: 40px;
+}
+
+.sectionHeading {
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 25px;
+}
+
+/* Quick Actions */
+
+.quickActions {
+  display: flex;
+  gap: 20px;
+}
+
+.quickCard {
+  width: 210px;
+  height: 130px;
+  background-color: white;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.quickCard:hover {
+  transform: translateY(-3px);
+}
+
+.quickCard i {
+  color: blue;
+  font-size: 28px;
+}
+
+/* Accounts */
+
+.accountsContainer {
+  display: flex;
+  gap: 25px;
+}
+
+.savingsCard {
+  flex: 1;
+  background-color: #123dbd;
+  color: white;
+  border-radius: 18px;
+  padding: 25px;
+}
+
+.creditCard {
+  flex: 1;
+  background-color: white;
+  border-radius: 18px;
+  padding: 25px;
+}
+
+.accountTop {
+  display: flex;
+  justify-content: space-between;
+}
+
+.accountType {
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.accountBottom {
+  margin-top: 60px;
+}
+
+.creditBottom {
+  margin-top: 60px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* FD */
+
+.fdCard {
+  margin-top: 25px;
+  background-color: #eef2ff;
+  border-radius: 18px;
+  padding: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fdLeft {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.fdIcon {
+  height: 55px;
+  width: 55px;
+  border-radius: 14px;
+  background-color: #ffd8cc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: brown;
+}
+
+.fdRight {
+  text-align: right;
+  color: blue;
+}
+
+/* Transactions */
+
+.transactionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.viewAll {
+  color: blue;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.transactionTable {
+  background-color: white;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.transactionRow {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr 1fr;
+  padding: 25px;
+  border-bottom: 1px solid #eee;
+  align-items: center;
+}
+
+.completedStatus {
+  background-color: #d1fadf;
+  color: green;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+.pendingStatus {
+  background-color: #ffe7c2;
+  color: orange;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+.debitAmount {
+  color: red;
+  font-weight: 700;
+}
+
+.creditAmount {
+  color: green;
+  font-weight: 700;
+}
+
+/* RIGHT DASHBOARD */
+
+.rightDashboard {
+  width: 320px;
+}
+
+.offerCard {
+  background-color: white;
+  border-radius: 18px;
+  overflow: hidden;
+  margin-bottom: 25px;
+}
+
+.offerCard img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.offerContent {
+  padding: 20px;
+}
+
+.offerContent h3 {
+  color: blue;
+}
+
+.offerButton {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  background-color: red;
+  color: white;
+  border-radius: 8px;
+  margin-top: 15px;
+  cursor: pointer;
+}
+
+.secondaryButton {
+  background-color: white;
+  border: 1px solid blue;
+  color: blue;
+}
+
+.rewardCard {
+  background-color: #8b2500;
+  color: white;
+  padding: 25px;
+  border-radius: 18px;
+}
+
+.rewardHeading {
+  font-size: 13px;
+  letter-spacing: 1px;
+  margin-bottom: 15px;
+}
+
+.redeemText {
+  margin-top: 20px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Main content ends here */

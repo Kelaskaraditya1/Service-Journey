@@ -1,0 +1,12 @@
+#contactSupport {
+  text-decoration: underline;
+}
+
+.footer {
+  height: 50px;
+  background-color: #24639c;
+  color: white;
+  display: flex;
+  justify-content: space-around;
+  padding-top: 20px;
+}

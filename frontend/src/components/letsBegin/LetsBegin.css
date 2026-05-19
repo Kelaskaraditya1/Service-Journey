@@ -1,0 +1,81 @@
+.letsBeginContainer {
+  background-color: lightskyblue;
+  height: 200px;
+  flex-direction: column;
+  position: relative;
+}
+
+.letsBeginText {
+  padding: 50px;
+}
+
+.titleText {
+  font-weight: 700;
+  font-size: 30px;
+  margin-bottom: 10px;
+}
+
+.contentText {
+  margin-top: 15px;
+  font-weight: 450;
+}
+
+.policyText {
+  padding: 10px;
+  margin-top: 30px;
+  border: 1px solid lightgray;
+  padding: 25px;
+  border-radius: 10px;
+}
+
+.card {
+  width: 1000px;
+  margin: 40px auto;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  border: 1px solid #e5e5e5;
+}
+
+.card-upper {
+  min-height: 180px;
+}
+
+.card-lower {
+  background: white;
+  padding: 30px;
+}
+
+.buttonContainer {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}
+
+.LetsGoButton {
+  min-width: 300px;
+  text-align: center;
+  background-color: oklch(0.6204 0.195 253.83);
+  height: 40px;
+}
+
+.authContainer {
+  flex-direction: column;
+  gap: 20px;
+  padding-left: 20%;
+  padding-right: 20%;
+}
+
+.authInput {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.authInfo {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 20px;
+  background-color: wheat;
+  margin-top: 15px;
+}
