@@ -7,11 +7,11 @@ import {
   HelpCircle,
   Lock,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import useTrackedNavigate from "../../hooks/useTrackedNavigate.js";
 
 let OtpErrorPage = () => {
 
-  let navigate = useNavigate()
+  let trackedNavigate = useTrackedNavigate()
 
   return (
     <div
@@ -160,7 +160,7 @@ let OtpErrorPage = () => {
                   boxShadow: "0 4px 10px rgba(11,77,187,0.2)",
                 }}
 
-                onClick={()=>navigate('/authentication')}
+                onClick={()=>trackedNavigate('/authentication')}
               >
                 <LogIn size={16} />
                 Return to Login

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import "./Otp.css";
-import { useNavigate } from "react-router-dom";
+import useTrackedNavigate from "../../hooks/useTrackedNavigate.js";
 
 let Otp = () => {
   let [timer, setTimer] = useState(0);
@@ -9,7 +9,7 @@ let Otp = () => {
   let [errorMessageState, setErrorMessageState] = useState(false)
   let [invalidOtpCount,setInvalidOtpCount] = useState(3)
 
-  let navigate = useNavigate();
+  let trackedNavigate = useTrackedNavigate();
 
   let resetTimer = () => {
     setTimer(10);
@@ -26,7 +26,7 @@ let Otp = () => {
   let onSubmit = () => {
 
             if(invalidOtpCount===1)
-        navigate('/otp/error-page')
+        trackedNavigate('/otp/error-page')
 
     if(otp.length !== 6){
       setErrorMessageState(true);
@@ -40,7 +40,7 @@ let Otp = () => {
       setInvalidOtpCount(invalidOtpCount-1);
     }
     else
-      navigate("/confirm-you");
+      trackedNavigate("/confirm-you");
 
     setTimeout(
       ()=>setErrorMessageState(false),

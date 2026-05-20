@@ -1,11 +1,11 @@
 import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import useTrackedNavigate from "../../hooks/useTrackedNavigate.js";
 
 let DebitCard = () => {
   let [cardNumber, setCardNumber] = useState("");
   let [isFocused, setIsFocused] = useState(false);
   let inputRef = useRef(null);
-  let navigate = useNavigate();
+  let trackedNavigate = useTrackedNavigate();
   let [errorState, setErrorState] = useState(false);
   let [errorMessage, setErrorMessage] = useState("");
   let [expiry, setExpiry] = useState("");
@@ -71,7 +71,7 @@ let DebitCard = () => {
       setErrorState(true);
       setErrorMessage("Pin is required");
     } else {
-      navigate("/welcome");
+      trackedNavigate("/welcome");
 
       setTimeout(() => setErrorState(false), 4000);
     }

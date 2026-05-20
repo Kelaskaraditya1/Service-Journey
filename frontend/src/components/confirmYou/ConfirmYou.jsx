@@ -1,15 +1,15 @@
 import { useState } from "react";
 import "./ConfirmYou.css";
-import { useNavigate } from "react-router-dom";
+import useTrackedNavigate from "../../hooks/useTrackedNavigate.js";
 
 let ConfirmYou = () => {
   let [getSelectedIdentity, setSelectedIdentity] = useState("DEBIT");
 
-  let navigate = useNavigate();
+  let trackedNavigate = useTrackedNavigate();
 
   let submit = () => {
-    if (getSelectedIdentity === "DEBIT") navigate("/verification/debit");
-    else navigate("/verification/net");
+    if (getSelectedIdentity === "DEBIT") trackedNavigate("/verification/debit");
+    else trackedNavigate("/verification/net");
   };
 
   return (

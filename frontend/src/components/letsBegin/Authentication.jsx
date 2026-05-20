@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import login from "../../services/AuthService.js";
+import { startSession } from "../../services/SessionService.js";
+import { useSession } from "../../context/SessionContext.jsx";
+import useTrackedNavigate from "../../hooks/useTrackedNavigate.js";
 import {
   CUSTOMER_ID_REGEX,
   MOBILE_REGEX,
@@ -17,7 +19,8 @@ let Authentication = () => {
 
   let [isValid, setIsValid] = useState(false);
 
-  let navigate = useNavigate();
+  let trackedNavigate = useTrackedNavigate();
+  let { loginUser, updateCurrentPage } = useSession();
 
   // let mobileRegex = /^[0-9]{10}$/;
   // let panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
@@ -105,19 +108,42 @@ let Authentication = () => {
       identity: identityValue,
     };
 
-    let response = await login(body);
+    try {
+      // Step 1: Login
+      let response = await login(body);
+      let status = response.status;
 
-    let status = response.status;
+      if (status === "OK") {
+        let userData = response.data;
+        console.log("[Auth] Login successful:", userData);
 
-    if (status === "OK") {
-      console.log(response.data);
+        // Step 2: Start session (Temporal workflow)
+        let sessionResponse = await startSession(userData.userId);
 
-      navigate("/otp");
-    } else {
-      setErrorMessage(response.message);
+        if (sessionResponse.success) {
+          let sessionId = sessionResponse.data.sessionId;
+          console.log("[Auth] Session started:", sessionId);
 
+          // Step 3: Store in context
+          loginUser(userData, sessionId);
+          updateCurrentPage("Authentication");
+
+          // Step 4: Navigate with tracking
+          trackedNavigate("/otp");
+        } else {
+          setErrorMessage("Failed to start session. Please try again.");
+          setErrorState(true);
+          setTimeout(() => setErrorState(false), 4000);
+        }
+      } else {
+        setErrorMessage(response.message);
+        setErrorState(true);
+        setTimeout(() => setErrorState(false), 4000);
+      }
+    } catch (error) {
+      console.error("[Auth] Login flow error:", error);
+      setErrorMessage("Something went wrong. Please try again.");
       setErrorState(true);
-
       setTimeout(() => setErrorState(false), 4000);
     }
   };

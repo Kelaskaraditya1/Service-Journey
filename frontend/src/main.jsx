@@ -5,11 +5,14 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import router from "./routes/AppRouter.jsx";
 import App from "./App.jsx";
+import { SessionProvider } from "./context/SessionContext.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <RouterProvider router={router}>
-      <App />
-    </RouterProvider>
+    <SessionProvider>
+      <RouterProvider router={router}>
+        <App />
+      </RouterProvider>
+    </SessionProvider>
   </StrictMode>,
 );
