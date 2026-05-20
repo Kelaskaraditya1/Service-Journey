@@ -1,6 +1,31 @@
 import "./WelcomePage.css";
+import { useSession } from "../../context/SessionContext.jsx";
+import { endSession } from "../../services/SessionService.js";
+import { useNavigate } from "react-router-dom";
 
 let Sidebar = () => {
+
+  let { user, sessionId, logoutUser } = useSession();
+  let navigate = useNavigate();
+
+  let handleLogout = async () => {
+    console.log("[Sidebar] Logout clicked, ending session:", sessionId);
+
+    if (sessionId) {
+      try {
+        await endSession(sessionId);
+        console.log("[Sidebar] Session end signal sent");
+      } catch (error) {
+        console.warn("[Sidebar] Failed to end session, logging out anyway:", error);
+      }
+    }
+
+    logoutUser();
+    navigate("/");
+  };
+
+  let displayName = user?.name || "User";
+
   return (
     <div className="sidebar">
       {/* User Card */}
@@ -14,7 +39,7 @@ let Sidebar = () => {
           <p className="welcomeText">Welcome back,</p>
 
           <h4 className="verifiedText">
-            Aditya
+            {displayName}
           </h4>
         </div>
       </div>
@@ -64,6 +89,12 @@ let Sidebar = () => {
           <i className="fa-solid fa-shield-halved"></i>
 
           <span>Security</span>
+        </div>
+
+        <div className="menuItem" onClick={handleLogout} style={{ cursor: "pointer", color: "#dc3545" }}>
+          <i className="fa-solid fa-right-from-bracket"></i>
+
+          <span style={{ fontWeight: 600 }}>Logout</span>
         </div>
       </div>
     </div>

@@ -79,7 +79,7 @@ public class AuthenticationService {
       users = this.authenticationRepository.findByContactAndDateOfBirth(loginRequest.contactNumber, dob)
         .orElseThrow(
           ()-> {
-            log.error(null);
+            log.error("Login failed — no user found for contact: {} with DOB", loginRequest.contactNumber);
             throw new CustomException(HttpStatus.BAD_REQUEST,"Invalid credentials");
           }
         );
@@ -87,7 +87,7 @@ public class AuthenticationService {
             users = this.authenticationRepository.findByContactAndPanNumber(loginRequest.contactNumber,loginRequest.identity)
         .orElseThrow(
           ()-> {
-            log.error(null);
+            log.error("Login failed — no user found for contact: {} with PAN", loginRequest.contactNumber);
             throw new CustomException(HttpStatus.BAD_REQUEST,"Invalid credentials");
           }
         );
@@ -95,7 +95,7 @@ public class AuthenticationService {
             users = this.authenticationRepository.findByContactAndUserId(loginRequest.contactNumber, loginRequest.identity)
         .orElseThrow(
           ()-> {
-            log.error(null);
+            log.error("Login failed — no user found for contact: {} with UID", loginRequest.contactNumber);
             throw new CustomException(HttpStatus.BAD_REQUEST,"Invalid credentials");
           }
         );

@@ -1,6 +1,10 @@
 import "./Verification.css";
+import useTrackedNavigate from "../../hooks/useTrackedNavigate.js";
 
 let NetBanking = () => {
+
+  let trackedNavigate = useTrackedNavigate();
+
   return (
     <div className="main">
       <div className="card">
@@ -29,8 +33,8 @@ let NetBanking = () => {
 
           <button
             type="button"
-            class="btn btn-primary submitButton"
-            onClick={() => navigate("/confirm-you")}
+            className="btn btn-primary submitButton"
+            onClick={() => trackedNavigate("/welcome")}
             style={{ width: "400px" }}
           >{`Confirm >`}</button>
         </center>

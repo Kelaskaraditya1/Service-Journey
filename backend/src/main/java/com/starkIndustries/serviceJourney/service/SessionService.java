@@ -8,18 +8,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.starkIndustries.serviceJourney.dto.request.EventTransitionRequest;
 import com.starkIndustries.serviceJourney.dto.request.SessionEndRequest;
 import com.starkIndustries.serviceJourney.dto.request.SessionStartRequest;
+import com.starkIndustries.serviceJourney.dto.response.EventTransitionResponse;
 import com.starkIndustries.serviceJourney.dto.response.SessionResponse;
 import com.starkIndustries.serviceJourney.expection.CustomException;
 import com.starkIndustries.serviceJourney.keys.Keys;
 import com.starkIndustries.serviceJourney.model.Event;
+import com.starkIndustries.serviceJourney.model.EventStatus;
 import com.starkIndustries.serviceJourney.model.ExpiryReasons;
 import com.starkIndustries.serviceJourney.model.Session;
+import com.starkIndustries.serviceJourney.model.SessionStatus;
 import com.starkIndustries.serviceJourney.repository.EventRepository;
 import com.starkIndustries.serviceJourney.repository.SessionRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
+
 @Service
+@Slf4j
 public class SessionService {
 
   @Autowired
@@ -28,127 +36,230 @@ public class SessionService {
   @Autowired
   public EventRepository eventRepository;
 
-  public SessionResponse startSession(SessionStartRequest sessionStartRequest){
+  @Autowired
+  public EventService eventService;
 
-    Instant now = Instant.now();
+  // ======================================================================
+  // ACTIVE METHODS — Still used by controllers and interceptors
+  // ======================================================================
 
-    Session session = Session.builder()
-      .sessionId(UUID.randomUUID().toString())
-      .userId(sessionStartRequest.userId)
-      .startTime(now)
-      .endTime(null)
-      .expired(false)
-      .expiryReasons(null)
-      .lastPage(null)
-      .duration(null)
-      .lastActivityTime(now)
-      .build();
-
-      this.sessionRepository.save(session);
-
-      return SessionResponse.builder()
-      .sessionId(session.sessionId)
-      .userId(session.userId)
-      .startTime(session.startTime)
-      .endTime(session.endTime)
-      .expired(session.expired)
-      .expiryReasons(session.expiryReasons)
-      .lastPage(session.lastPage)
-      .duration(session.duration)
-      .lastActivityTime(session.lastActivityTime)
-      .build();
-
+  public List<Session> getAllSessions() {
+    return this.sessionRepository.findAll();
   }
 
-  public SessionResponse endSession(SessionEndRequest sessionEndRequest){
-
-    Instant now = Instant.now();
-
-    Session session = this.sessionRepository.findById(sessionEndRequest.sessionId)
-      .orElseThrow(
-        ()-> new CustomException(HttpStatus.BAD_REQUEST, "Session wth session id "+sessionEndRequest.sessionId+" does not exist")
-      );
-
-      Event openEvent = this.eventRepository.findBySession_SessionIdAndExitTimeIsNull(session.sessionId);
-
-      if(openEvent != null && openEvent.getExitTime() == null){
-        openEvent.exitTime = now;
-        openEvent.timeSpent = openEvent.exitTime.toEpochMilli()-openEvent.enterTime.toEpochMilli();
-
-        this.eventRepository.save(openEvent);
-      }
-
-    ExpiryReasons reason;
-
-    if (sessionEndRequest.getExpiryReasons() != null && sessionEndRequest.getExpiryReasons() == ExpiryReasons.LOGOUT) {
-        reason = ExpiryReasons.LOGOUT;
-    } else if (now.isAfter(session.getStartTime().plusSeconds(Keys.ABSOLUTE))) { 
-        reason = ExpiryReasons.ABSOLUTE;
-    } else {
-        reason = ExpiryReasons.INACTIVITY;
-    }
-
-    session.setEndTime(now);
-    session.setExpired(reason!=ExpiryReasons.LOGOUT);
-    session.setExpiryReasons(reason);
-    session.setDuration(now.toEpochMilli()-session.startTime.toEpochMilli());
-    session.setLastActivityTime(now);
-
-    this.sessionRepository.save(session);
-
-    return SessionResponse.builder()
-      .sessionId(session.sessionId)
-      .userId(session.userId)
-      .startTime(session.startTime)
-      .endTime(session.endTime)
-      .expired(session.expired)
-      .expiryReasons(session.expiryReasons)
-      .lastPage(session.lastPage)
-      .duration(session.duration)
-      .lastActivityTime(session.lastActivityTime)
-      .build();
-
+  public Session getSession(String sessionId) {
+    return this.sessionRepository.findById(sessionId)
+        .orElseThrow(() -> {
+          log.error("Session [{}] not found", sessionId);
+          return new CustomException(HttpStatus.BAD_REQUEST,
+              "Session with session Id " + sessionId + " does not exist");
+        });
   }
 
-  public void forceAbortSession(Session session, ExpiryReasons expiryReasons){
 
-    if(session.endTime!=null)
-      return ;
+  public void forceAbortSession(Session session, ExpiryReasons expiryReasons) {
 
-    Event openEvent = this.eventRepository.findBySession_SessionIdAndExitTimeIsNull(session.sessionId);
+    if (session.endTime != null) {
+      log.debug("Session [{}] already ended, skipping force abort", session.sessionId);
+      return;
+    }
 
     Instant now = Instant.now();
 
-    if(openEvent!=null){
-      openEvent.exitTime=now;
-      openEvent.timeSpent = now.toEpochMilli() - openEvent.enterTime.toEpochMilli();
-
-      this.eventRepository.save(openEvent);
+    Event openEvent = eventService.findOpenEvent(session.sessionId);
+    if (openEvent != null) {
+      eventService.completeEvent(openEvent, now);
     }
+
+    SessionStatus status = (expiryReasons == ExpiryReasons.ABSOLUTE)
+        ? SessionStatus.EXPIRED_ABSOLUTE
+        : SessionStatus.EXPIRED_INACTIVITY;
 
     session.setEndTime(now);
     session.setExpiryReasons(expiryReasons);
     session.setExpired(true);
-    session.setDuration(session.endTime.toEpochMilli()-session.startTime.toEpochMilli());
+    session.setSessionStatus(status);
+    session.setDuration(session.endTime.toEpochMilli() - session.startTime.toEpochMilli());
+    session.setActiveEventId(null);
 
     this.sessionRepository.save(session);
 
+    log.warn("Session [{}] force-aborted (interceptor) — reason: {}, duration: {}ms",
+        session.sessionId, expiryReasons, session.duration);
   }
 
 
-  public List<Session> getAllSessions(){
-    return this.sessionRepository.findAll();
+  @Deprecated
+  public SessionResponse startSession(SessionStartRequest sessionStartRequest) {
+
+    Instant now = Instant.now();
+
+    Session session = Session.builder()
+        .sessionId(UUID.randomUUID().toString())
+        .userId(sessionStartRequest.userId)
+        .startTime(now)
+        .endTime(null)
+        .expired(false)
+        .expiryReasons(null)
+        .sessionStatus(SessionStatus.ACTIVE)
+        .lastPage(null)
+        .duration(null)
+        .lastActivityTime(now)
+        .workflowId(null)
+        .activeEventId(null)
+        .eventCount(0)
+        .build();
+
+    this.sessionRepository.save(session);
+
+    log.info("[DEPRECATED] Session [{}] started for user [{}]", session.sessionId, session.userId);
+
+    return buildSessionResponse(session);
   }
 
-  public Session getSession(String sessionId){
+  /**
+   * @deprecated Temporal workflow now handles session end.
+   * See: SessionWorkflowImpl.handleSessionEnd()
+   * See: SessionActivitiesImpl.completeSession()
+   */
+  @Deprecated
+  public SessionResponse endSession(SessionEndRequest sessionEndRequest) {
 
-    return this.sessionRepository.findById(sessionId)
-      .orElseThrow(
-        ()-> new CustomException(HttpStatus.BAD_REQUEST,"Session with session Id "+sessionId+" does not exist")
-      );
+    Instant now = Instant.now();
 
+    Session session = this.sessionRepository.findById(sessionEndRequest.sessionId)
+        .orElseThrow(
+            () -> {
+              log.error("Session end failed — session [{}] not found", sessionEndRequest.sessionId);
+              return new CustomException(HttpStatus.BAD_REQUEST,
+                  "Session with session id " + sessionEndRequest.sessionId + " does not exist");
+            });
+
+    Event openEvent = eventService.findOpenEvent(session.sessionId);
+    if (openEvent != null) {
+      eventService.completeEvent(openEvent, now);
+      log.debug("Auto-closed open event [{}] during session end", openEvent.eventId);
+    }
+
+    ExpiryReasons reason;
+    SessionStatus status;
+
+    if (sessionEndRequest.getExpiryReasons() != null
+        && sessionEndRequest.getExpiryReasons() == ExpiryReasons.LOGOUT) {
+      reason = ExpiryReasons.LOGOUT;
+      status = SessionStatus.COMPLETED;
+    } else if (now.isAfter(session.getStartTime().plusSeconds(Keys.ABSOLUTE))) {
+      reason = ExpiryReasons.ABSOLUTE;
+      status = SessionStatus.EXPIRED_ABSOLUTE;
+    } else {
+      reason = ExpiryReasons.INACTIVITY;
+      status = SessionStatus.EXPIRED_INACTIVITY;
+    }
+
+    session.setEndTime(now);
+    session.setExpired(reason != ExpiryReasons.LOGOUT);
+    session.setExpiryReasons(reason);
+    session.setSessionStatus(status);
+    session.setDuration(now.toEpochMilli() - session.startTime.toEpochMilli());
+    session.setLastActivityTime(now);
+    session.setActiveEventId(null);
+
+    this.sessionRepository.save(session);
+
+    log.info("[DEPRECATED] Session [{}] ended — reason: {}, duration: {}ms",
+        session.sessionId, reason, session.duration);
+
+    return buildSessionResponse(session);
   }
 
+  /**
+   * @deprecated Temporal workflow now handles event transitions.
+   * See: SessionWorkflowImpl.handleEventTransition()
+   * See: SessionActivitiesImpl.createEvent(), completeEvent()
+   */
+  @Deprecated
+  public EventTransitionResponse eventTransition(EventTransitionRequest request) {
 
-  
+    Instant now = Instant.now();
+
+    Session session = this.sessionRepository.findById(request.sessionId)
+        .orElseThrow(() -> {
+          log.error("Event transition failed — session [{}] not found", request.sessionId);
+          return new CustomException(HttpStatus.BAD_REQUEST,
+              "Session with session id " + request.sessionId + " does not exist");
+        });
+
+    if (session.getSessionStatus() != SessionStatus.ACTIVE) {
+      log.warn("Event transition rejected — session [{}] is {}", session.sessionId, session.getSessionStatus());
+      throw new CustomException(HttpStatus.BAD_REQUEST,
+          "Session " + request.sessionId + " is not active (status: " + session.getSessionStatus() + ")");
+    }
+
+    String previousEventId = null;
+
+    if (request.previousEventId != null) {
+      Event previousEvent = this.eventRepository.findById(request.previousEventId)
+          .orElseThrow(() -> {
+            log.error("Event transition failed — previous event [{}] not found", request.previousEventId);
+            return new CustomException(HttpStatus.BAD_REQUEST,
+                "Previous event " + request.previousEventId + " does not exist");
+          });
+
+      eventService.completeEvent(previousEvent, now);
+      previousEventId = previousEvent.eventId;
+    } else {
+      Event openEvent = eventService.findOpenEvent(session.sessionId);
+      if (openEvent != null) {
+        eventService.completeEvent(openEvent, now);
+        previousEventId = openEvent.eventId;
+        log.debug("Auto-detected and closed open event [{}]", openEvent.eventId);
+      }
+    }
+
+    int nextSequence = (session.getEventCount() != null ? session.getEventCount() : 0) + 1;
+
+    Event newEvent = eventService.createEvent(session, request.nextScreenName, nextSequence, previousEventId);
+
+    session.setLastPage(request.nextScreenName);
+    session.setLastActivityTime(now);
+    session.setActiveEventId(newEvent.eventId);
+    session.setEventCount(nextSequence);
+
+    this.sessionRepository.save(session);
+
+    log.info("[DEPRECATED] Event transition in session [{}]: '{}' → '{}' (sequence: {})",
+        session.sessionId,
+        request.previousScreenName != null ? request.previousScreenName : "START",
+        request.nextScreenName,
+        nextSequence);
+
+    return EventTransitionResponse.builder()
+        .sessionId(session.sessionId)
+        .previousEventId(previousEventId)
+        .currentEventId(newEvent.eventId)
+        .currentPage(newEvent.page)
+        .sequenceOrder(newEvent.sequenceOrder)
+        .eventStartTime(newEvent.enterTime)
+        .status(newEvent.status)
+        .build();
+  }
+
+  // ======================================================================
+  // PRIVATE HELPERS
+  // ======================================================================
+
+  private SessionResponse buildSessionResponse(Session session) {
+    return SessionResponse.builder()
+        .sessionId(session.sessionId)
+        .userId(session.userId)
+        .startTime(session.startTime)
+        .endTime(session.endTime)
+        .expired(session.expired)
+        .expiryReasons(session.expiryReasons)
+        .lastPage(session.lastPage)
+        .duration(session.duration)
+        .lastActivityTime(session.lastActivityTime)
+        .build();
+  }
+
 }
