@@ -1,5 +1,32 @@
 package com.starkIndustries.serviceJourney.controller;
 
+// ======================================================================
+// DEPRECATED CONTROLLER
+// ======================================================================
+//
+// This controller provided separate /event/start and /event/end APIs.
+// These have been replaced by the unified /session/event-transition API
+// in SessionController.
+//
+// The frontend will NO LONGER call:
+//   - POST /event/start
+//   - POST /event/end
+//
+// Instead, use:
+//   - POST /session/event-transition
+//
+// The underlying business logic (create event, complete event) has been
+// moved into EventService as internal helper methods and is orchestrated
+// by SessionService.eventTransition().
+//
+// In Step 2 (Temporal integration), event operations will become
+// Temporal Activities executed within a session workflow.
+//
+// Keeping this file for reference. Original code below.
+// ======================================================================
+
+/*
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -75,3 +102,5 @@ public class EventController {
   }  
   
 }
+
+*/

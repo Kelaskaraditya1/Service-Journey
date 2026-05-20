@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 public class LoginRequest {
 
 @NotBlank(message = "Phone number is required")
-@Pattern(regexp = "$[0-9]{10}^")
+@Pattern(regexp = "^[0-9]{10}$", message = "Contact number should be exactly 10 digits")
 public String contactNumber;
 
 @NotNull(message = "Identity Type is required")

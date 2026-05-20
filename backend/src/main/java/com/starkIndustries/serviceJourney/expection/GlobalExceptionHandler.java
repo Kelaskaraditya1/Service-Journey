@@ -1,6 +1,5 @@
 package com.starkIndustries.serviceJourney.expection;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -15,20 +14,21 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import com.starkIndustries.serviceJourney.keys.Keys;
+import com.starkIndustries.serviceJourney.dto.response.ApiResponse;
+
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler extends ResponseEntityExceptionHandler{
+@Slf4j
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   @ExceptionHandler(CustomException.class)
-  public ResponseEntity<?> globalExceptionHandler(CustomException customException){
+  public ResponseEntity<ApiResponse<Object>> globalExceptionHandler(CustomException customException) {
 
-    Map<String,Object> response = new LinkedHashMap<>();
+    log.error("CustomException — status: {}, message: {}",
+        customException.status, customException.message);
 
-    response.put(Keys.STATUS, customException.status.value());
-    response.put(Keys.STATUS_CODE, HttpStatus.valueOf(customException.status.value()).name());
-    response.put(Keys.MESSAGE,customException.message);
-    response.put(Keys.TIME_STAMP,System.currentTimeMillis());
+    ApiResponse<Object> response = ApiResponse.error(customException.status, customException.message);
 
     return ResponseEntity.status(customException.status).body(response);
 
@@ -38,33 +38,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler{
   protected @Nullable ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
       HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
-        Map<String,String> errors = ex.getBindingResult()
-          .getFieldErrors()
-          .stream()
-          .collect(
+    Map<String, String> errors = ex.getBindingResult()
+        .getFieldErrors()
+        .stream()
+        .collect(
             Collectors.toMap(
-              fieldError -> fieldError.getField(), // gives filed
-              fieldError -> fieldError.getDefaultMessage() // gives error
-            )
-          );
+                fieldError -> fieldError.getField(),
+                fieldError -> fieldError.getDefaultMessage()));
 
-        // List<String> errors = ex.getBindingResult()
-        //   .getFieldErrors()
-        //   .stream()
-        //   .map(error->error.getDefaultMessage())
-        //   .collect(Collectors.toList());
+    log.warn("Validation failed — {} error(s): {}", errors.size(), errors);
 
-        Map<String,Object> response = new LinkedHashMap<>();
+    ApiResponse<Object> response = ApiResponse.validationError(HttpStatus.valueOf(status.value()), errors);
 
-        response.put(Keys.STATUS, status.value());
-        response.put(Keys.STATUS_CODE, HttpStatus.valueOf(status.value()).name());
-        response.put(Keys.ERRORS, errors);
-        response.put(Keys.TIME_STAMP, System.currentTimeMillis());
-
-        return ResponseEntity.status(status).body(response);
+    return ResponseEntity.status(status).body(response);
 
   }
 
-  
-  
 }
