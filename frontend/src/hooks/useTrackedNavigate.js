@@ -17,20 +17,7 @@ const SCREEN_NAMES = {
   "/welcome": "Welcome_Dashboard",
 };
 
-/**
- * useTrackedNavigate — Custom hook that wraps react-router navigate().
- *
- * Before every navigation:
- *   1. Calls POST /session/event-transition (if session is active)
- *   2. Updates the current page in context
- *   3. Then navigates to the new route
- *
- * Usage:
- *   let trackedNavigate = useTrackedNavigate();
- *   trackedNavigate("/otp");
- *
- * If no session is active, it just navigates normally (no API call).
- */
+
 let useTrackedNavigate = () => {
   let navigate = useNavigate();
   let { sessionId, currentPage, updateCurrentPage } = useSession();
@@ -49,14 +36,21 @@ let useTrackedNavigate = () => {
         timestamp: Date.now(),
       };
 
-      // Fire transition — don't block navigation on failure
       try {
-        await transitionEvent(payload);
+        let result = await transitionEvent(payload);
+
+        // If session expired, apiFetch is already redirecting to /authentication.
+        // Block this navigation — don't let the user proceed to the next screen.
+        if (result._sessionExpired) {
+          console.warn(
+            "[useTrackedNavigate] Session expired. Navigation to", toPath, "blocked."
+          );
+          return; // <-- Stop here. apiFetch is handling the redirect.
+        }
       } catch (error) {
         console.warn("[useTrackedNavigate] Transition failed, navigating anyway:", error);
       }
     }
-    
 
     // Update context and navigate
     updateCurrentPage(nextScreenName);

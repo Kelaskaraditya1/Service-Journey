@@ -25,25 +25,7 @@ import com.starkIndustries.serviceJourney.repository.SessionRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * ============================================================
- * SessionService — Database Query & Legacy Orchestration Layer
- * ============================================================
- * 
- * STEP 2 STATUS:
- *   Orchestration methods (startSession, eventTransition, endSession)
- *   are now DEPRECATED because Temporal workflow handles orchestration.
- * 
- *   These methods are kept for:
- *     - Reference/learning purposes
- *     - Fallback if Temporal is not running
- *     - Understanding the business logic flow
- * 
- *   ACTIVE methods (still used by controllers):
- *     - getSession()      → DB query
- *     - getAllSessions()   → DB query
- *     - forceAbortSession() → Used by RequestInterceptor (legacy)
- */
+
 @Service
 @Slf4j
 public class SessionService {
@@ -74,20 +56,7 @@ public class SessionService {
         });
   }
 
-  // ======================================================================
-  // FORCE ABORT — Still used by RequestInterceptor (legacy timeout check)
-  // In the Temporal architecture, workflow timers handle this instead.
-  // The interceptor-based approach is kept temporarily as a safety net.
-  // ======================================================================
 
-  /**
-   * Force-aborts a session due to timeout (absolute or inactivity).
-   * Called by the RequestInterceptor when timeout conditions are detected.
-   * 
-   * NOTE: With Temporal, the workflow's inactivity timer is the PRIMARY
-   * timeout mechanism. This interceptor-based approach is a SECONDARY
-   * safety net that can be removed once Temporal is fully trusted.
-   */
   public void forceAbortSession(Session session, ExpiryReasons expiryReasons) {
 
     if (session.endTime != null) {
@@ -119,26 +88,7 @@ public class SessionService {
         session.sessionId, expiryReasons, session.duration);
   }
 
-  // ======================================================================
-  // DEPRECATED ORCHESTRATION METHODS
-  // ======================================================================
-  //
-  // These methods were the Step 1 orchestration layer.
-  // In Step 2, Temporal workflow handles all orchestration.
-  //
-  // Controller now:
-  //   - POST /session/start          → starts Temporal workflow
-  //   - POST /session/event-transition → signals Temporal workflow
-  //   - POST /session/end            → signals Temporal workflow
-  //
-  // These methods are preserved for reference and learning.
-  // ======================================================================
 
-  /**
-   * @deprecated Temporal workflow now handles session creation.
-   * See: SessionWorkflowImpl.startSession()
-   * See: SessionActivitiesImpl.createSession()
-   */
   @Deprecated
   public SessionResponse startSession(SessionStartRequest sessionStartRequest) {
 

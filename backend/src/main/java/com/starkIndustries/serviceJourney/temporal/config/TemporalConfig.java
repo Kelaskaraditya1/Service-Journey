@@ -1,46 +1,19 @@
 package com.starkIndustries.serviceJourney.temporal.config;
 
 import jakarta.annotation.PreDestroy;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import com.starkIndustries.serviceJourney.temporal.activity.SessionActivitiesImpl;
 import com.starkIndustries.serviceJourney.temporal.workflow.SessionWorkflowImpl;
-
 import io.temporal.client.WorkflowClient;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.serviceclient.WorkflowServiceStubsOptions;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
-
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * ============================================================
- * TemporalConfig — Spring Configuration for Temporal.io
- * ============================================================
- * 
- * Sets up:
- *   1. WorkflowServiceStubs → connection to Temporal server
- *   2. WorkflowClient       → used by controllers to start/signal workflows
- *   3. WorkerFactory         → manages worker lifecycle
- *   4. Worker                → polls the task queue and executes workflows/activities
- * 
- * Task Queue: SERVICE_JOURNEY_QUEUE
- * 
- * PREREQUISITE:
- *   A Temporal server must be running at the configured address.
- *   Default: localhost:7233
- * 
- *   Quick start with Docker:
- *     docker run --rm -p 7233:7233 -p 8233:8233 temporalio/auto-setup:latest
- * 
- *   Or use Temporal CLI:
- *     temporal server start-dev
- */
 @Configuration
 @Slf4j
 public class TemporalConfig {
@@ -59,14 +32,7 @@ public class TemporalConfig {
   private WorkflowServiceStubs serviceStubs;
   private WorkerFactory workerFactory;
 
-  // ============================================================
-  // BEANS
-  // ============================================================
 
-  /**
-   * Connection to the Temporal server (gRPC).
-   * This is a long-lived connection used throughout the app lifecycle.
-   */
   @Bean
   public WorkflowServiceStubs workflowServiceStubs() {
     log.info("Connecting to Temporal server at: {}", temporalServerAddress);
@@ -89,15 +55,6 @@ public class TemporalConfig {
     return WorkflowClient.newInstance(serviceStubs);
   }
 
-  /**
-   * Creates and starts the worker that listens on the task queue.
-   * 
-   * The worker:
-   *   - Registers the SessionWorkflowImpl (workflow logic)
-   *   - Registers the SessionActivitiesImpl (DB operations)
-   *   - Polls SERVICE_JOURNEY_QUEUE for tasks
-   *   - Executes workflows and activities when tasks arrive
-   */
   @Bean
   public WorkerFactory workerFactory(WorkflowClient workflowClient) {
 

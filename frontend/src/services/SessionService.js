@@ -6,8 +6,13 @@
  *   transitionEvent(payload)  → POST /session/event-transition
  *   endSession(sessionId)     → POST /session/end
  *
- * All calls include X-Session-Id header when a sessionId is available.
+ * All calls go through apiFetch which handles session-expiry detection.
+ * If any call returns a 401/403 or expired response, the user is
+ * automatically redirected to /authentication. No component needs
+ * to handle expiry individually.
  */
+
+import apiFetch from "../utility/apiFetch.js";
 
 const baseUrl = "http://localhost:8080/api/v1";
 
@@ -27,18 +32,24 @@ let buildHeaders = (sessionId) => {
  * POST /session/start
  * Starts a Temporal workflow-backed session.
  *
+ * Note: skipExpiryCheck=true because this is a fresh session creation.
+ * There is no existing session to expire at this point.
+ *
  * @param {string} userId - The user ID from login response
  * @returns {object} Response with sessionId and workflowId
  */
 export let startSession = async (userId) => {
   try {
-    let response = await fetch(`${baseUrl}/session/start`, {
-      method: "POST",
-      headers: buildHeaders(null),
-      body: JSON.stringify({ userId }),
-    });
+    let data = await apiFetch(
+      `${baseUrl}/session/start`,
+      {
+        method: "POST",
+        headers: buildHeaders(null),
+        body: JSON.stringify({ userId }),
+      },
+      { skipExpiryCheck: true }
+    );
 
-    let data = await response.json();
     console.log("[SessionService] startSession response:", data);
     return data;
   } catch (error) {
@@ -51,18 +62,28 @@ export let startSession = async (userId) => {
  * POST /session/event-transition
  * Signals the Temporal workflow to transition between screens.
  *
+ * If the session has expired (workflow ended due to inactivity/absolute timeout),
+ * apiFetch will detect the 401 response and redirect to login automatically.
+ *
  * @param {object} payload - { sessionId, previousScreenName, nextScreenName, timestamp }
  * @returns {object} Response confirming transition signal was sent
  */
 export let transitionEvent = async (payload) => {
   try {
-    let response = await fetch(`${baseUrl}/session/event-transition`, {
-      method: "POST",
-      headers: buildHeaders(payload.sessionId),
-      body: JSON.stringify(payload),
-    });
+    let data = await apiFetch(
+      `${baseUrl}/session/event-transition`,
+      {
+        method: "POST",
+        headers: buildHeaders(payload.sessionId),
+        body: JSON.stringify(payload),
+      }
+    );
 
-    let data = await response.json();
+    // If session expired, apiFetch already triggered redirect
+    if (data._sessionExpired) {
+      return data;
+    }
+
     console.log(
       `[SessionService] transitionEvent: '${payload.previousScreenName || "START"}' → '${payload.nextScreenName}'`,
       data
@@ -78,21 +99,27 @@ export let transitionEvent = async (payload) => {
  * POST /session/end
  * Signals the Temporal workflow to end the session.
  *
+ * Note: skipExpiryCheck=true because we are intentionally ending the session.
+ * A 401 here just means the session already expired — that's fine, we're logging out anyway.
+ *
  * @param {string} sessionId - The session to end
  * @returns {object} Response confirming end signal was sent
  */
 export let endSession = async (sessionId) => {
   try {
-    let response = await fetch(`${baseUrl}/session/end`, {
-      method: "POST",
-      headers: buildHeaders(sessionId),
-      body: JSON.stringify({
-        sessionId,
-        expiryReasons: "LOGOUT",
-      }),
-    });
+    let data = await apiFetch(
+      `${baseUrl}/session/end`,
+      {
+        method: "POST",
+        headers: buildHeaders(sessionId),
+        body: JSON.stringify({
+          sessionId,
+          expiryReasons: "LOGOUT",
+        }),
+      },
+      { skipExpiryCheck: true }
+    );
 
-    let data = await response.json();
     console.log("[SessionService] endSession response:", data);
     return data;
   } catch (error) {
