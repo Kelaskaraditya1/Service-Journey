@@ -39,9 +39,7 @@ public class SessionService {
   @Autowired
   public EventService eventService;
 
-  // ======================================================================
-  // ACTIVE METHODS — Still used by controllers and interceptors
-  // ======================================================================
+
 
   public List<Session> getAllSessions() {
     return this.sessionRepository.findAll();
@@ -117,11 +115,7 @@ public class SessionService {
     return buildSessionResponse(session);
   }
 
-  /**
-   * @deprecated Temporal workflow now handles session end.
-   * See: SessionWorkflowImpl.handleSessionEnd()
-   * See: SessionActivitiesImpl.completeSession()
-   */
+
   @Deprecated
   public SessionResponse endSession(SessionEndRequest sessionEndRequest) {
 
@@ -172,11 +166,7 @@ public class SessionService {
     return buildSessionResponse(session);
   }
 
-  /**
-   * @deprecated Temporal workflow now handles event transitions.
-   * See: SessionWorkflowImpl.handleEventTransition()
-   * See: SessionActivitiesImpl.createEvent(), completeEvent()
-   */
+
   @Deprecated
   public EventTransitionResponse eventTransition(EventTransitionRequest request) {
 

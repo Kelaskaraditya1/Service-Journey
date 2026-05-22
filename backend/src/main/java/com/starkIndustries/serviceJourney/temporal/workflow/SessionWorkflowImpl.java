@@ -2,51 +2,18 @@ package com.starkIndustries.serviceJourney.temporal.workflow;
 
 import java.time.Duration;
 import java.util.UUID;
-
 import io.temporal.activity.ActivityOptions;
 import io.temporal.workflow.Workflow;
-
 import com.starkIndustries.serviceJourney.temporal.activity.SessionActivities;
 
-/**
- * ============================================================
- * SessionWorkflowImpl — Temporal Workflow Implementation
- * ============================================================
- * 
- * This is the orchestration brain of a user session.
- * ONE instance runs per session and manages:
- * 
- *   - Session creation (via activity)
- *   - Event transitions (via signals + activities)
- *   - Inactivity timeout (via Temporal durable timer)
- *   - Session completion (via signal + activities)
- * 
- * IMPORTANT TEMPORAL RULES:
- *   - NO direct DB calls from workflow code (use activities)
- *   - NO System.currentTimeMillis() (use Workflow.currentTimeMillis())
- *   - NO Thread.sleep() (use Workflow.sleep())
- *   - NO external I/O (use activities)
- *   - Workflow code must be DETERMINISTIC
- * 
- * The workflow keeps running (blocked on Workflow.await) until:
- *   - User sends endSession signal (normal logout)
- *   - Inactivity timer expires (auto-abort)
- */
+
 public class SessionWorkflowImpl implements SessionWorkflow {
 
-  // ============================================================
-  // CONFIGURATION
-  // ============================================================
-
-  /** How long to wait for user activity before auto-aborting */
   private static final Duration INACTIVITY_TIMEOUT = Duration.ofMinutes(5);
 
   /** Max absolute session lifetime */
   private static final Duration ABSOLUTE_TIMEOUT = Duration.ofMinutes(30);
 
-  // ============================================================
-  // ACTIVITY STUB — connects workflow to DB operations
-  // ============================================================
 
   private final SessionActivities activities = Workflow.newActivityStub(
       SessionActivities.class,
@@ -54,10 +21,6 @@ public class SessionWorkflowImpl implements SessionWorkflow {
           .setStartToCloseTimeout(Duration.ofSeconds(10))
           .build());
 
-  // ============================================================
-  // DURABLE WORKFLOW STATE
-  // These fields survive server restarts via Temporal's event sourcing.
-  // ============================================================
 
   private String sessionId;
   private String userId;
@@ -67,17 +30,12 @@ public class SessionWorkflowImpl implements SessionWorkflow {
   private boolean sessionCompleted = false;
   private boolean sessionAborted = false;
   private long lastActivityTimeMs;
-
-  // Pending signal data (used to communicate between signal handler and main loop)
   private String pendingNextScreen = null;
   private String pendingPreviousEventId = null;
   private String pendingPreviousScreen = null;
   private boolean hasTransitionSignal = false;
   private String endReason = null;
 
-  // ============================================================
-  // MAIN WORKFLOW METHOD
-  // ============================================================
 
   @Override
   public void startSession(String sessionId, String userId) {
@@ -92,14 +50,6 @@ public class SessionWorkflowImpl implements SessionWorkflow {
     // Step 1: Persist the session to database
     activities.createSession(sessionId, userId);
 
-    // Step 2: Main loop — wait for signals or timeout
-    //
-    // The workflow sits here for the entire session lifetime.
-    // It wakes up when:
-    //   (a) a transitionEvent signal arrives
-    //   (b) an endSession signal arrives
-    //   (c) the inactivity timer expires
-    //
     while (!sessionCompleted && !sessionAborted) {
 
       // Wait for a signal OR timeout (whichever comes first)
@@ -132,9 +82,6 @@ public class SessionWorkflowImpl implements SessionWorkflow {
             sessionId, sequenceNumber, sessionAborted);
   }
 
-  // ============================================================
-  // SIGNAL HANDLERS
-  // ============================================================
 
   @Override
   public void transitionEvent(String previousEventId, String previousScreen, String nextScreen) {
@@ -159,10 +106,6 @@ public class SessionWorkflowImpl implements SessionWorkflow {
     this.endReason = (reason != null) ? reason : "LOGOUT";
   }
 
-  // ============================================================
-  // QUERY HANDLER
-  // ============================================================
-
   @Override
   public String getSessionState() {
     return String.format(
@@ -175,17 +118,6 @@ public class SessionWorkflowImpl implements SessionWorkflow {
         sequenceNumber, sessionCompleted, sessionAborted);
   }
 
-  // ============================================================
-  // INTERNAL HANDLERS — Called from the main loop
-  // ============================================================
-
-  /**
-   * Processes an event transition:
-   *   1. Complete the previous event (if exists)
-   *   2. Create a new event
-   *   3. Update session tracking
-   *   4. Reset inactivity timer
-   */
   private void handleEventTransition() {
 
     // Step 1: Complete previous event
@@ -225,10 +157,7 @@ public class SessionWorkflowImpl implements SessionWorkflow {
     pendingPreviousScreen = null;
   }
 
-  /**
-   * Handles a normal session end (user logout).
-   * Completes the active event and marks session as COMPLETED.
-   */
+
   private void handleSessionEnd() {
 
     Workflow.getLogger(SessionWorkflowImpl.class)
@@ -249,10 +178,7 @@ public class SessionWorkflowImpl implements SessionWorkflow {
     this.currentScreen = null;
   }
 
-  /**
-   * Handles inactivity timeout.
-   * Auto-aborts the session and closes any active event.
-   */
+
   private void handleInactivityTimeout() {
 
     Workflow.getLogger(SessionWorkflowImpl.class)

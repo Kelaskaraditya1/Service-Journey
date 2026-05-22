@@ -1,11 +1,8 @@
 package com.starkIndustries.serviceJourney.temporal.activity;
 
 import java.time.Instant;
-import java.util.UUID;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
 import com.starkIndustries.serviceJourney.model.Event;
 import com.starkIndustries.serviceJourney.model.EventStatus;
 import com.starkIndustries.serviceJourney.model.ExpiryReasons;
@@ -13,23 +10,9 @@ import com.starkIndustries.serviceJourney.model.Session;
 import com.starkIndustries.serviceJourney.model.SessionStatus;
 import com.starkIndustries.serviceJourney.repository.EventRepository;
 import com.starkIndustries.serviceJourney.repository.SessionRepository;
-
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * ============================================================
- * SessionActivitiesImpl — Temporal Activity Implementation
- * ============================================================
- * 
- * Contains all database operations for the session workflow.
- * Reuses existing JPA repositories directly.
- * 
- * IMPORTANT:
- *   - Activities CAN have side effects (DB writes, API calls)
- *   - Activities CAN be retried by Temporal on failure
- *   - Activities are NOT required to be deterministic
- *   - This class is a Spring @Component so it gets autowired repos
- */
+
 @Component
 @Slf4j
 public class SessionActivitiesImpl implements SessionActivities {
@@ -89,7 +72,7 @@ public class SessionActivitiesImpl implements SessionActivities {
   }
 
   @Override
-  public void completeSession(String sessionId, String reason) {
+  public void completeSession(String sessionId, String reason) {  // when user logout's
 
     Session session = sessionRepository.findById(sessionId)
         .orElseThrow(() -> new RuntimeException("Session not found: " + sessionId));
@@ -197,6 +180,7 @@ public class SessionActivitiesImpl implements SessionActivities {
 
     log.info("[Activity] Completed event [{}] on page '{}', duration: {}ms",
         eventId, event.getPage(), event.getTimeSpent());
+
   }
 
 }
