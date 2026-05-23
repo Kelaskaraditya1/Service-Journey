@@ -11,5 +11,7 @@ public class Keys {
   public static final long ABSOLUTE = 120;
   public static final long INACTIVITY_TIME = 300_000;
   public static final String SESSION_HEADER="X-Session-Id";
+  public static final String TASK_QUEUE = "SERVICE_JOURNEY_QUEUE";
+
   
 }

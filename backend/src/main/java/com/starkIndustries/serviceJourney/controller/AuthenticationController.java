@@ -25,26 +25,17 @@ public class AuthenticationController {
   @Autowired
   public AuthenticationService authenticationService;
 
-  // ======================================================================
-  // DEPRECATED — /auth/signup is no longer used in the current architecture.
-  // Authentication flow is ONLY via /auth/login.
-  // Keeping this endpoint commented out for reference.
-  // ======================================================================
-
-  /*
-   * @Deprecated — Signup is no longer part of the auth flow.
-   * 
-   * @PostMapping("/signup")
-   * public ResponseEntity<ApiResponse<Users>> signup(@Valid @RequestBody SignupRequest signupRequest) {
-   *
-   *   log.info("POST /auth/signup — username: {}", signupRequest.username);
-   *
-   *   Users users = this.authenticationService.signup(signupRequest);
-   *
-   *   return ResponseEntity.status(HttpStatus.OK)
-   *       .body(ApiResponse.success(users, "Signup successful"));
-   * }
-   */
+  @PostMapping("/signup")
+   public ResponseEntity<ApiResponse<Users>> signup(@Valid @RequestBody SignupRequest signupRequest) {
+   
+      log.info("POST /auth/signup — username: {}", signupRequest.username);
+   
+      Users users = this.authenticationService.signup(signupRequest);
+   
+      return ResponseEntity.status(HttpStatus.OK)
+          .body(ApiResponse.success(users, "Signup successful"));
+    }
+  
 
   @PostMapping("/login")
   public ResponseEntity<ApiResponse<Users>> login(@RequestBody LoginRequest loginRequest) {

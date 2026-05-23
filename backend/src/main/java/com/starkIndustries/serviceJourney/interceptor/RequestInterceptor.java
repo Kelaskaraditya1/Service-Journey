@@ -20,6 +20,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class RequestInterceptor implements HandlerInterceptor {
 
+  /* 
+
+  Logic: 
+    1) it intercepts the request before reaching the controller layer.
+    2) we are passing a session Id as header value of the active session.
+    3) we fetch the session and check the start time and lastActivityTime.
+    4) if now > startTime + Absollute threshold, end the session
+    5) lastActivityTime - startTimem > Inactivity Threshold , end the session.
+  
+  */
+
   @Autowired
   public SessionRepository sessionRepository;
 

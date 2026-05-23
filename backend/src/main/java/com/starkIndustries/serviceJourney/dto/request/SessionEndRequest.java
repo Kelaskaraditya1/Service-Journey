@@ -17,6 +17,6 @@ import lombok.NoArgsConstructor;
     @NotBlank(message = "Session Id is missing")
     public String sessionId;
 
-    public ExpiryReasons expiryReasons;
+    public ExpiryReasons expiryReasons; // in case of User Logout
     
   }

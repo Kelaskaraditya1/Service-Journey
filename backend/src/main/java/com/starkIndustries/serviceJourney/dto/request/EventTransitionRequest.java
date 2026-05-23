@@ -8,14 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Request DTO for the unified event-transition API.
- * 
- * This replaces the old separate /event/start + /event/end calls.
- * Frontend sends a single request when user navigates between screens.
- * 
- * In future Temporal integration, this maps to a Signal on the session workflow.
- */
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -26,7 +19,7 @@ public class EventTransitionRequest {
   public String sessionId;
 
   // Nullable — will be null for the very first transition in a session
-  public String previousEventId;
+  public String previousEventId;  // will be used like a Linked List
 
   // The screen the user is leaving (nullable for first transition)
   public String previousScreenName;

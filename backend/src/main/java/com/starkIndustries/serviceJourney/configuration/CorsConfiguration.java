@@ -15,7 +15,7 @@ public class CorsConfiguration {
       @Override
       public void addCorsMappings(CorsRegistry registry) {
 
-        registry.addMapping("/**")
+        registry.addMapping("/**")  // tells to which routes of backend should Cors Configuration should be applied.
           .allowedHeaders("*")
           .allowedMethods("*")
           .allowedOrigins("http://localhost:3000/")

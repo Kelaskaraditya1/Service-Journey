@@ -7,13 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Standardized API response wrapper used across all endpoints.
- * Field names are backward-compatible with the existing Map-based responses
- * (timeStamp, statusCode, status, data, message) so the frontend does not break.
- * 
- * Added field: "success" (boolean) — additive, won't affect existing consumers.
- */
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

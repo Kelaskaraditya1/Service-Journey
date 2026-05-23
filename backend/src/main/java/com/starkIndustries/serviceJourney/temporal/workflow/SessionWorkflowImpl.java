@@ -3,22 +3,32 @@ package com.starkIndustries.serviceJourney.temporal.workflow;
 import java.time.Duration;
 import java.util.UUID;
 import io.temporal.activity.ActivityOptions;
+import io.temporal.common.RetryOptions;
 import io.temporal.workflow.Workflow;
 import com.starkIndustries.serviceJourney.temporal.activity.SessionActivities;
 
 
 public class SessionWorkflowImpl implements SessionWorkflow {
 
+  /*
+  This workflow operates and also interacts with the database simultaniously to save the information.
+  */
+
   private static final Duration INACTIVITY_TIMEOUT = Duration.ofMinutes(5);
 
   /** Max absolute session lifetime */
-  private static final Duration ABSOLUTE_TIMEOUT = Duration.ofMinutes(30);
+  // private static final Duration ABSOLUTE_TIMEOUT = Duration.ofMinutes(30);
 
 
   private final SessionActivities activities = Workflow.newActivityStub(
       SessionActivities.class,
       ActivityOptions.newBuilder()
-          .setStartToCloseTimeout(Duration.ofSeconds(10))
+          .setStartToCloseTimeout(Duration.ofSeconds(10))  // how much time dedicated to one activity.
+          .setRetryOptions(
+            RetryOptions.newBuilder()
+            .setMaximumAttempts(3)  // maximum number of retries when failed.
+            .build()
+          )
           .build());
 
 
@@ -38,7 +48,12 @@ public class SessionWorkflowImpl implements SessionWorkflow {
 
 
   @Override
-  public void startSession(String sessionId, String userId) {
+  public void startSession(String sessionId, String userId) { 
+
+    /* 
+    This is the main method, which manages the entire lifecycle of the Session.
+    and there are some external functions (Signal methods) which change the states which are defined above which triggers some conditions for eg: event transition, session update etc.
+    */
 
     this.sessionId = sessionId;
     this.userId = userId;
@@ -50,15 +65,19 @@ public class SessionWorkflowImpl implements SessionWorkflow {
     // Step 1: Persist the session to database
     activities.createSession(sessionId, userId);
 
-    while (!sessionCompleted && !sessionAborted) {
+    while (!this.sessionCompleted && !this.sessionAborted) {  
 
-      // Wait for a signal OR timeout (whichever comes first)
-      boolean signalReceived = Workflow.await(
+      boolean signalReceived = Workflow.await(  
+
+        /* 
+        once the session starts, it should wait for IN_ACTIVITY_TIMEOUT time, 
+        for some signal which will change the state and that will trigger some action.        
+        */
+
           INACTIVITY_TIMEOUT,
-          () -> hasTransitionSignal || endReason != null);
+          () -> this.hasTransitionSignal || this.endReason != null);
 
-      // --- Case A: endSession signal received ---
-      if (endReason != null) {
+      if (endReason != null) {  // End the session
         handleSessionEnd();
         break;
       }
@@ -165,7 +184,9 @@ public class SessionWorkflowImpl implements SessionWorkflow {
 
     // Close any active event
     if (currentEventId != null) {
+
       activities.completeEvent(currentEventId);
+
       Workflow.getLogger(SessionWorkflowImpl.class)
           .info("Closed active event [{}] during session end", currentEventId);
     }

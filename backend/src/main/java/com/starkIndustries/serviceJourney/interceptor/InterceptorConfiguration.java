@@ -14,8 +14,8 @@ public class InterceptorConfiguration implements WebMvcConfigurer{
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
     registry.addInterceptor(requestInterceptor)
-      .addPathPatterns("/**")
-      .excludePathPatterns(
+      .addPathPatterns("/**")  // to which url's the interceptor should be applied
+      .excludePathPatterns(  // avoid intercepting this url's 
         "/auth/signup",
         "/auth/login",
         "/session/start",

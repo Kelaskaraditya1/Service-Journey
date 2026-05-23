@@ -3,11 +3,9 @@ package com.starkIndustries.serviceJourney.service;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-
 import com.starkIndustries.serviceJourney.dto.request.EventTransitionRequest;
 import com.starkIndustries.serviceJourney.dto.request.SessionEndRequest;
 import com.starkIndustries.serviceJourney.dto.request.SessionStartRequest;
@@ -16,15 +14,12 @@ import com.starkIndustries.serviceJourney.dto.response.SessionResponse;
 import com.starkIndustries.serviceJourney.expection.CustomException;
 import com.starkIndustries.serviceJourney.keys.Keys;
 import com.starkIndustries.serviceJourney.model.Event;
-import com.starkIndustries.serviceJourney.model.EventStatus;
 import com.starkIndustries.serviceJourney.model.ExpiryReasons;
 import com.starkIndustries.serviceJourney.model.Session;
 import com.starkIndustries.serviceJourney.model.SessionStatus;
 import com.starkIndustries.serviceJourney.repository.EventRepository;
 import com.starkIndustries.serviceJourney.repository.SessionRepository;
-
 import lombok.extern.slf4j.Slf4j;
-
 
 @Service
 @Slf4j
@@ -78,7 +73,7 @@ public class SessionService {
     session.setExpired(true);
     session.setSessionStatus(status);
     session.setDuration(session.endTime.toEpochMilli() - session.startTime.toEpochMilli());
-    session.setActiveEventId(null);
+    session.setActiveEventId(null);  // we are setting activeEventId = null since we have closed the open event.
 
     this.sessionRepository.save(session);
 
@@ -118,6 +113,17 @@ public class SessionService {
 
   @Deprecated
   public SessionResponse endSession(SessionEndRequest sessionEndRequest) {
+
+    /* Logic: 
+
+    1) get the Session using the sessionId.
+    2) close the open event.
+    3) set appropriate Status and reason on the basis of following condition:
+      1) if reason is provided in the request and it is LOGOUT than status = COMPLETE, reason = LOGOUT
+      2) if (endTime-startTime)>Threshold status = EXPIRED_ABSOLUTE, reason=ABSOLUTE.
+      3) else status = EXPIRED_INACTIVITY, reason = INACTIVITY.
+    
+    */
 
     Instant now = Instant.now();
 
@@ -170,10 +176,22 @@ public class SessionService {
   @Deprecated
   public EventTransitionResponse eventTransition(EventTransitionRequest request) {
 
+    /* 
+
+    Called when user moves from one page to another.
+
+    1) get the session using sessionId.
+    2) close the open event , 
+        1) if eventId is provided, find the event and close it.
+        2) if not than find the open event , which is the last event that happened and close it.
+        3) than fill the session information and save it.
+    
+    */
+
     Instant now = Instant.now();
 
     Session session = this.sessionRepository.findById(request.sessionId)
-        .orElseThrow(() -> {
+        .orElseThrow(() -> {                                  
           log.error("Event transition failed — session [{}] not found", request.sessionId);
           return new CustomException(HttpStatus.BAD_REQUEST,
               "Session with session id " + request.sessionId + " does not exist");

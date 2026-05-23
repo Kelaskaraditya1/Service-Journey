@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import com.starkIndustries.serviceJourney.dto.request.EventTransitionRequest;
 import com.starkIndustries.serviceJourney.dto.request.SessionEndRequest;
 import com.starkIndustries.serviceJourney.dto.request.SessionStartRequest;
-import com.starkIndustries.serviceJourney.temporal.config.TemporalConfig;
+import com.starkIndustries.serviceJourney.keys.Keys;
 import com.starkIndustries.serviceJourney.temporal.workflow.SessionWorkflow;
 
 import io.temporal.client.WorkflowClient;
@@ -34,7 +34,7 @@ public class SessionWorkflowClient {
 
     WorkflowOptions options = WorkflowOptions.newBuilder()
         .setWorkflowId(sessionId)
-        .setTaskQueue(TemporalConfig.TASK_QUEUE)
+        .setTaskQueue(Keys.TASK_QUEUE)
         .build();
 
     SessionWorkflow workflow = workflowClient.newWorkflowStub(
