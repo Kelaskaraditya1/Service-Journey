@@ -2,6 +2,7 @@ package com.starkIndustries.serviceJourney;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class BackendApplication {
 
 	@GetMapping("/health")
-	public ResponseEntity<?> health(){
+	public ResponseEntity<?> health() {
 
 		Map<String,Object> response = new LinkedHashMap<>();
 

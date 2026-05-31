@@ -1,0 +1,18 @@
+workflows: 
+
+  sessionFlow: 
+
+    states:
+
+      ACTIVE:
+
+        onTransitionEvent:
+          - completePreviousEvent
+          - createNewEvent
+          - updateSessionTracking
+
+        onEndSession:
+          - completeSession
+
+        onTimeout:
+          - abortSession 

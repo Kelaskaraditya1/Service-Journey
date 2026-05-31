@@ -1,36 +1,46 @@
 package com.starkIndustries.serviceJourney.temporal.workflow;
 
 import java.time.Duration;
-import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
+
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
 import io.temporal.workflow.Workflow;
 import com.starkIndustries.serviceJourney.temporal.activity.SessionActivities;
 
-
+/**
+ * SessionWorkflowImpl — Temporal workflow for session lifecycle management.
+ *
+ * After YAML migration, this workflow is responsible ONLY for:
+ *   - Durable state management (sessionId, currentEventId, sequenceNumber, etc.)
+ *   - Signal handling (transitionEvent, endSession)
+ *   - Timer management (inactivity timeout via Workflow.await)
+ *   - Workflow lifecycle (start → loop → complete)
+ *
+ * All business execution is delegated to activities.executeWorkflow()
+ * which flows through:
+ *   WorkflowEngineService → workflow.yml → WorkflowStepExecutor → Repositories
+ */
 public class SessionWorkflowImpl implements SessionWorkflow {
 
-  /*
-  This workflow operates and also interacts with the database simultaniously to save the information.
-  */
-
   private static final Duration INACTIVITY_TIMEOUT = Duration.ofMinutes(5);
-
-  /** Max absolute session lifetime */
-  // private static final Duration ABSOLUTE_TIMEOUT = Duration.ofMinutes(30);
-
 
   private final SessionActivities activities = Workflow.newActivityStub(
       SessionActivities.class,
       ActivityOptions.newBuilder()
-          .setStartToCloseTimeout(Duration.ofSeconds(10))  // how much time dedicated to one activity.
+          .setStartToCloseTimeout(Duration.ofSeconds(10))
           .setRetryOptions(
             RetryOptions.newBuilder()
-            .setMaximumAttempts(3)  // maximum number of retries when failed.
+            .setMaximumAttempts(3)
             .build()
           )
           .build());
 
+
+  // =========================================================
+  // DURABLE WORKFLOW STATE — Temporal manages these fields
+  // =========================================================
 
   private String sessionId;
   private String userId;
@@ -40,6 +50,8 @@ public class SessionWorkflowImpl implements SessionWorkflow {
   private boolean sessionCompleted = false;
   private boolean sessionAborted = false;
   private long lastActivityTimeMs;
+
+  // Signal data (set by signal methods, consumed by main loop)
   private String pendingNextScreen = null;
   private String pendingPreviousEventId = null;
   private String pendingPreviousScreen = null;
@@ -47,13 +59,12 @@ public class SessionWorkflowImpl implements SessionWorkflow {
   private String endReason = null;
 
 
-  @Override
-  public void startSession(String sessionId, String userId) { 
+  // =========================================================
+  // WORKFLOW MAIN METHOD
+  // =========================================================
 
-    /* 
-    This is the main method, which manages the entire lifecycle of the Session.
-    and there are some external functions (Signal methods) which change the states which are defined above which triggers some conditions for eg: event transition, session update etc.
-    */
+  @Override
+  public void startSession(String sessionId, String userId) {
 
     this.sessionId = sessionId;
     this.userId = userId;
@@ -62,22 +73,24 @@ public class SessionWorkflowImpl implements SessionWorkflow {
     Workflow.getLogger(SessionWorkflowImpl.class)
         .info("Workflow STARTED — session [{}] for user [{}]", sessionId, userId);
 
-    // Step 1: Persist the session to database
+    // Direct activity call — session creation runs BEFORE the YAML state machine
     activities.createSession(sessionId, userId);
 
-    while (!this.sessionCompleted && !this.sessionAborted) {  
+    Workflow.getLogger(SessionWorkflowImpl.class)
+        .info("Session [{}] persisted, entering main event loop", sessionId);
 
-      boolean signalReceived = Workflow.await(  
+    // -------------------------------------------------------
+    // MAIN EVENT LOOP — Wait for signals or timeout
+    // -------------------------------------------------------
 
-        /* 
-        once the session starts, it should wait for IN_ACTIVITY_TIMEOUT time, 
-        for some signal which will change the state and that will trigger some action.        
-        */
+    while (!this.sessionCompleted && !this.sessionAborted) {
 
+      boolean signalReceived = Workflow.await(
           INACTIVITY_TIMEOUT,
           () -> this.hasTransitionSignal || this.endReason != null);
 
-      if (endReason != null) {  // End the session
+      // --- Case A: endSession signal received ---
+      if (endReason != null) {
         handleSessionEnd();
         break;
       }
@@ -85,7 +98,7 @@ public class SessionWorkflowImpl implements SessionWorkflow {
       // --- Case B: transitionEvent signal received ---
       if (hasTransitionSignal) {
         handleEventTransition();
-        hasTransitionSignal = false; // reset for next signal
+        hasTransitionSignal = false;
         continue;
       }
 
@@ -102,6 +115,10 @@ public class SessionWorkflowImpl implements SessionWorkflow {
   }
 
 
+  // =========================================================
+  // SIGNAL METHODS — Set state, consumed by main loop
+  // =========================================================
+
   @Override
   public void transitionEvent(String previousEventId, String previousScreen, String nextScreen) {
 
@@ -109,7 +126,6 @@ public class SessionWorkflowImpl implements SessionWorkflow {
         .info("Signal RECEIVED: transitionEvent — session [{}], '{}' → '{}'",
             sessionId, previousScreen != null ? previousScreen : "START", nextScreen);
 
-    // Store signal data for the main loop to process
     this.pendingPreviousEventId = previousEventId;
     this.pendingPreviousScreen = previousScreen;
     this.pendingNextScreen = nextScreen;
@@ -137,88 +153,127 @@ public class SessionWorkflowImpl implements SessionWorkflow {
         sequenceNumber, sessionCompleted, sessionAborted);
   }
 
+
+  // =========================================================
+  // HANDLER: Event Transition → YAML onTransitionEvent
+  // =========================================================
+
   private void handleEventTransition() {
 
-    // Step 1: Complete previous event
+    // Auto-detect previous event ID — workflow state logic stays here
     String prevId = pendingPreviousEventId;
     if (prevId == null && currentEventId != null) {
-      // Auto-detect: close whatever is currently active
       prevId = currentEventId;
     }
 
-    if (prevId != null) {
-      activities.completeEvent(prevId);
-      Workflow.getLogger(SessionWorkflowImpl.class)
-          .info("Completed previous event [{}]", prevId);
-    }
-
-    // Step 2: Create new event
+    // Prepare sequence number for the new event
     sequenceNumber++;
-    String newEventId = UUID.randomUUID().toString();
 
-    activities.createEvent(sessionId, newEventId, pendingNextScreen, sequenceNumber, prevId);
+    Workflow.getLogger(SessionWorkflowImpl.class)
+        .info("handleEventTransition — session [{}], prevEvent=[{}], nextScreen='{}', sequence={}",
+            sessionId, prevId, pendingNextScreen, sequenceNumber);
 
-    // Step 3: Update session tracking in DB
-    activities.updateSessionTracking(sessionId, pendingNextScreen, newEventId, sequenceNumber);
+    // Build workflow data map
+    Map<String, Object> workflowData = new HashMap<>();
+    workflowData.put("sessionId", sessionId);
+    workflowData.put("currentEventId", prevId);
+    workflowData.put("nextScreen", pendingNextScreen);
+    workflowData.put("currentScreen", currentScreen);
+    workflowData.put("sequenceNumber", sequenceNumber);
+    workflowData.put("previousEventId", prevId);
 
-    // Step 4: Update workflow state
-    this.currentEventId = newEventId;
+    Workflow.getLogger(SessionWorkflowImpl.class)
+        .info("handleEventTransition — calling executeWorkflow with data: {}", workflowData.keySet());
+
+    // YAML-driven execution: onTransitionEvent
+    activities.executeWorkflow("sessionFlow", "ACTIVE", "transitionEvent", workflowData);
+
+    // Update workflow state after successful execution
+    // The new eventId is generated inside WorkflowStepExecutor.createNewEvent()
+    // We need to track it for future transitions — use a convention-based approach
     this.currentScreen = pendingNextScreen;
     this.lastActivityTimeMs = Workflow.currentTimeMillis();
 
-    Workflow.getLogger(SessionWorkflowImpl.class)
-        .info("Event transition complete — session [{}], new event [{}] on '{}', sequence: {}",
-            sessionId, newEventId, pendingNextScreen, sequenceNumber);
+    // The currentEventId will be the one created by the executor.
+    // Since we can't read it back from the YAML engine in this architecture,
+    // we let the next transition auto-detect via the DB's session.activeEventId.
+    // For workflow-internal tracking, we mark it as "managed by engine".
+    this.currentEventId = "YAML_MANAGED";
 
-    // Clear pending data
+    Workflow.getLogger(SessionWorkflowImpl.class)
+        .info("handleEventTransition — completed, screen='{}', sequence={}",
+            currentScreen, sequenceNumber);
+
+    // Clear pending signal data
     pendingNextScreen = null;
     pendingPreviousEventId = null;
     pendingPreviousScreen = null;
   }
 
 
+  // =========================================================
+  // HANDLER: Session End → YAML onEndSession
+  // =========================================================
+
   private void handleSessionEnd() {
 
     Workflow.getLogger(SessionWorkflowImpl.class)
-        .info("Ending session [{}] — reason: {}", sessionId, endReason);
+        .info("handleSessionEnd — session [{}], reason='{}', activeEvent=[{}]",
+            sessionId, endReason, currentEventId);
 
-    // Close any active event
-    if (currentEventId != null) {
+    // Build workflow data map
+    Map<String, Object> workflowData = new HashMap<>();
+    workflowData.put("sessionId", sessionId);
+    workflowData.put("currentEventId", currentEventId);
+    workflowData.put("endReason", endReason);
+    workflowData.put("currentScreen", currentScreen);
 
-      activities.completeEvent(currentEventId);
+    Workflow.getLogger(SessionWorkflowImpl.class)
+        .info("handleSessionEnd — calling executeWorkflow with data: {}", workflowData.keySet());
 
-      Workflow.getLogger(SessionWorkflowImpl.class)
-          .info("Closed active event [{}] during session end", currentEventId);
-    }
+    // YAML-driven execution: onEndSession
+    activities.executeWorkflow("sessionFlow", "ACTIVE", "endSession", workflowData);
 
-    // Mark session as completed
-    activities.completeSession(sessionId, endReason);
-
+    // Update workflow state
     this.sessionCompleted = true;
     this.currentEventId = null;
     this.currentScreen = null;
+
+    Workflow.getLogger(SessionWorkflowImpl.class)
+        .info("handleSessionEnd — session [{}] ended successfully", sessionId);
   }
 
+
+  // =========================================================
+  // HANDLER: Inactivity Timeout → YAML onTimeout
+  // =========================================================
 
   private void handleInactivityTimeout() {
 
     Workflow.getLogger(SessionWorkflowImpl.class)
-        .warn("INACTIVITY TIMEOUT — session [{}], last activity {}ms ago, aborting...",
+        .warn("INACTIVITY TIMEOUT — session [{}], last activity {}ms ago",
             sessionId, Workflow.currentTimeMillis() - lastActivityTimeMs);
 
-    // Close any active event
-    if (currentEventId != null) {
-      activities.completeEvent(currentEventId);
-      Workflow.getLogger(SessionWorkflowImpl.class)
-          .info("Closed active event [{}] during inactivity abort", currentEventId);
-    }
+    // Build workflow data map
+    Map<String, Object> workflowData = new HashMap<>();
+    workflowData.put("sessionId", sessionId);
+    workflowData.put("currentEventId", currentEventId);
+    workflowData.put("endReason", "INACTIVITY");
+    workflowData.put("currentScreen", currentScreen);
 
-    // Abort the session
-    activities.abortSession(sessionId, "INACTIVITY");
+    Workflow.getLogger(SessionWorkflowImpl.class)
+        .info("handleInactivityTimeout — calling executeWorkflow with data: {}", workflowData.keySet());
 
+    // YAML-driven execution: onTimeout
+    activities.executeWorkflow("sessionFlow", "ACTIVE", "timeout", workflowData);
+
+    // Update workflow state
     this.sessionAborted = true;
     this.currentEventId = null;
     this.currentScreen = null;
+
+    Workflow.getLogger(SessionWorkflowImpl.class)
+        .warn("handleInactivityTimeout — session [{}] aborted", sessionId);
   }
 
 }
